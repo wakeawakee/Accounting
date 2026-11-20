@@ -41,7 +41,13 @@ jobs:
         run: |
           [ -z "$VITE_SUPABASE_URL" ] && unset VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY
           pnpm exec tsc -p .
-          pnpm exec vite build --mode pages --base ./ --outDir site
+          # Until Supabase is configured, the main link serves the in-browser version.
+          if [ -n "$VITE_SUPABASE_URL" ] || grep -qE '^VITE_SUPABASE_URL=.+' .env.pages; then
+            pnpm exec vite build --mode pages --base ./ --outDir site
+          else
+            echo "Supabase not configured yet: publishing the in-browser version at /"
+            pnpm exec vite build --mode demo --base ./ --outDir site
+          fi
           pnpm exec vite build --mode demo --base ./ --outDir site/demo
           touch site/.nojekyll
 
