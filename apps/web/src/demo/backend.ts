@@ -30,6 +30,8 @@ import {
   type Language,
   type TemplateType,
 } from '@karsathi/shared';
+import { HttpErr, installBackend, matcher, sniffMime as sniff } from '../lib/interceptor';
+import { readSpreadsheet } from '../lib/sheet';
 
 const KEY = 'ks_demo_v1';
 type Row = Record<string, any>;
@@ -57,11 +59,6 @@ const token = () => {
 const iso = (ad: string) => `${ad}T00:00:00.000Z`;
 const nowIso = () => new Date().toISOString();
 
-class HttpErr extends Error {
-  constructor(public status: number, message: string, public details?: unknown) {
-    super(message);
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Seed
@@ -216,30 +213,6 @@ function publicFirm() {
   return { id: f._id, ...f, hasLogo: false };
 }
 
-function parseCsv(text: string): { headers: string[]; rows: Row[] } {
-  const out: string[][] = [];
-  let row: string[] = [];
-  let cell = '';
-  let q = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (q) {
-      if (ch === '"' && text[i + 1] === '"') (cell += '"'), i++;
-      else if (ch === '"') q = false;
-      else cell += ch;
-    } else if (ch === '"') q = true;
-    else if (ch === ',') row.push(cell), (cell = '');
-    else if (ch === '\n' || ch === '\r') {
-      if (ch === '\r' && text[i + 1] === '\n') i++;
-      row.push(cell), out.push(row), (row = []), (cell = '');
-    } else cell += ch;
-  }
-  if (cell || row.length) row.push(cell), out.push(row);
-  const rows = out.filter((r) => r.some((c) => c.trim()));
-  const headers = (rows.shift() ?? []).map((h) => h.trim());
-  return { headers, rows: rows.map((r) => Object.fromEntries(headers.map((h, i) => [h, (r[i] ?? '').trim()]))) };
-}
-
 export function sampleImportRows() {
   const headers = ['Business Name', 'Owner Name', 'Mobile No', 'PAN', 'VAT Registered', 'TDS', 'Municipality', 'Language'];
   const rows: Row[] = fakeClients(50, 600000000).map((c) => ({
@@ -270,14 +243,6 @@ function validateRows(rows: Row[], mapping: Record<string, string>) {
   });
 }
 
-async function sniff(blob: Blob): Promise<string | null> {
-  const b = new Uint8Array(await blob.slice(0, 8).arrayBuffer());
-  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
-  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
-  if (b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46 && b[4] === 0x2d) return 'application/pdf';
-  return null;
-}
-
 function setStatus(ids: string[], status: string) {
   let n = 0;
   for (const t of state.tasks) {
@@ -294,14 +259,7 @@ function setStatus(ids: string[], status: string) {
 // Router
 // ---------------------------------------------------------------------------
 async function handle(method: string, path: string, body: any): Promise<unknown> {
-  const [p, qs] = path.split('?');
-  const q = new URLSearchParams(qs ?? '');
-  const seg = p.split('/').filter(Boolean);
-  const is = (m: string, pattern: string) => {
-    if (m !== method) return false;
-    const ps = pattern.split('/').filter(Boolean);
-    return ps.length === seg.length && ps.every((x, i) => x.startsWith(':') || x === seg[i]);
-  };
+  const { seg, q, is } = matcher(method, path);
 
   // ---- auth
   if (is('GET', '/auth/me')) {
@@ -396,10 +354,9 @@ async function handle(method: string, path: string, body: any): Promise<unknown>
   if (is('POST', '/clients/import/parse')) {
     const file = (body as FormData).get('file') as File;
     if (!file) throw new HttpErr(400, 'No file uploaded');
-    if (!/\.(csv|txt)$/i.test(file.name)) {
-      throw new HttpErr(400, 'This phone demo reads CSV files only (in Excel: File → Save As → CSV). The full app reads .xlsx too. Or tap “Use sample file”.');
-    }
-    const { headers, rows } = parseCsv((await file.text()).replace(/^﻿/, ''));
+    const { headers, rows } = await readSpreadsheet(file).catch((e) => {
+      throw new HttpErr(400, e.message);
+    });
     return { headers, rows, suggestedMapping: suggestColumnMapping(headers), fields: CLIENT_IMPORT_FIELDS };
   }
   if (is('POST', '/clients/import')) {
@@ -588,31 +545,5 @@ async function handle(method: string, path: string, body: any): Promise<unknown>
 }
 
 export function installDemoBackend() {
-  const realFetch = window.fetch.bind(window);
-  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    const i = url.indexOf('/api/');
-    if (i === -1) return realFetch(input, init);
-    const path = url.slice(i + 4);
-    const method = (init?.method ?? 'GET').toUpperCase();
-    let body: unknown = init?.body;
-    if (typeof body === 'string') {
-      try {
-        body = JSON.parse(body);
-      } catch {
-        /* leave as string */
-      }
-    }
-    const json = (status: number, data: unknown) =>
-      new Response(JSON.stringify(data ?? null), { status, headers: { 'content-type': 'application/json' } });
-    try {
-      const data = await handle(method, path, body);
-      if (method !== 'GET') save();
-      return json(200, data);
-    } catch (e) {
-      if (e instanceof HttpErr) return json(e.status, { error: e.message, details: e.details });
-      console.error(e);
-      return json(500, { error: 'Something went wrong in the demo' });
-    }
-  };
+  installBackend(handle, save);
 }

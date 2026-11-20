@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import type { Me } from '../lib/auth';
 import { ErrorText, PageTitle } from '../components/ui';
+import { SUPABASE } from '../lib/demo';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -122,7 +123,7 @@ function StaffSection({ canEdit }: { canEdit: boolean }) {
         <form onSubmit={(e) => (e.preventDefault(), add.mutate())} className="grid gap-2 sm:grid-cols-4">
           <input className="input" placeholder={t('auth.name')} required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
           <input className="input" placeholder={t('auth.email')} type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
-          <input className="input" placeholder={t('auth.password')} type="password" minLength={8} required value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
+          {SUPABASE ? <p className="text-xs text-slate-500">They sign up on this site with this email and join your firm automatically.</p> : <input className="input" placeholder={t('auth.password')} type="password" minLength={8} required value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />}
           <button className="btn-primary">{t('settings.addStaff')}</button>
           <div className="sm:col-span-4"><ErrorText error={add.error} /></div>
         </form>

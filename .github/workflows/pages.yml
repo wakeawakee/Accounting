@@ -1,0 +1,53 @@
+# Builds the web app and publishes it to GitHub Pages (gh-pages branch).
+#   /        → the real app, backed by Supabase (config in apps/web/.env.pages)
+#   /demo/   → sample-data demo that runs entirely in the browser
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, claude/karsathi-compliance-mvp-p23mm0]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Tests (rules engine + database schema)
+        run: |
+          pnpm --filter @karsathi/shared test
+          pnpm --filter @karsathi/supabase-tests test
+
+      - name: Build app and demo
+        working-directory: apps/web
+        env:
+          # Optional overrides from repo Settings → Secrets and variables → Actions → Variables
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          [ -z "$VITE_SUPABASE_URL" ] && unset VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY
+          pnpm exec tsc -p .
+          pnpm exec vite build --mode pages --base ./ --outDir site
+          pnpm exec vite build --mode demo --base ./ --outDir site/demo
+          touch site/.nojekyll
+
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: apps/web/site
+          publish_branch: gh-pages
+          force_orphan: true

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, apiBase } from '../lib/api';
-import { DEMO } from '../lib/demo';
+import { STATIC_HOST as DEMO } from '../lib/demo';
 import { bsDateTime, type Lang } from '../lib/format';
 import { DateBs, Modal, PageTitle, StatusBadge, Urgency } from '../components/ui';
 import { ClientForm } from './ClientsPage';
@@ -103,7 +103,7 @@ export default function ClientDetailPage() {
               <li key={m._id} className="p-3 text-sm">
                 <div className="flex justify-between text-xs text-slate-500">
                   <span>{bsDateTime(m.createdAt, lang)} · {m.provider} · {m.segments} SMS</span>
-                  <span className={m.status === 'sent' ? 'text-green-700' : 'text-red-600'}>{m.status}{m.error ? `: ${m.error}` : ''}</span>
+                  <span className={m.status === 'sent' ? 'text-green-700' : m.status ? 'text-red-600' : 'text-amber-600'}>{m.status ?? 'sending'}{m.error ? `: ${m.error}` : ''}</span>
                 </div>
                 <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
               </li>

@@ -90,7 +90,38 @@ pnpm test
 - **iPhone HEIC photos.** If the browser can't decode a HEIC photo for compression, the original HEIC is uploaded and the server rejects it. Android cameras produce JPEG. The camera button asks for `image/*`, and most iPhones convert to JPEG on upload.
 - **Message costs** are estimates. Set `SMS_COST_PER_SEGMENT_NPR` to your gateway's actual rate.
 
-## Deploy
+## Hosting on Supabase + GitHub Pages (no server to run)
+
+The web app can run as a static site on GitHub Pages, with Supabase handling the database, logins, file storage and reminder sending. The Express API in `apps/api` is not used in this setup.
+
+| Part | How it works |
+|---|---|
+| Database + tenancy | Postgres tables with Row Level Security (`supabase/schema.sql`). Each user sees only their firm's rows, and staff see only their assigned clients. |
+| Logins | Supabase Auth with email and password. Staff are invited by email in Settings, then sign up themselves. |
+| Client uploads | Private Storage bucket `documents` (10 MB limit, JPG/PNG/PDF only). Anonymous uploads are allowed only into the folder of a valid upload link. |
+| Task generation | Runs in the accountant's browser using the shared rules engine (`apps/web/src/supabase/backend.ts`), whenever the Today or Tasks page is opened. |
+| Reminders | `dispatch_reminders()` runs every minute via `pg_cron`. It handles quiet hours, auto-stop and retries. The console provider only logs messages; SMS uses a Sparrow-style gateway through `pg_net`. |
+| Hosting | `.github/workflows/pages.yml` builds the app to `/` and the sample-data demo to `/demo/` on the `gh-pages` branch. |
+
+Setup (about 10 minutes):
+
+1. **Create the project.** Go to supabase.com → New project. Pick the Mumbai or Singapore region (closest to Nepal).
+2. **Create the database.** In the SQL Editor, paste all of `supabase/schema.sql` and click **Run**. If it reports that pg_cron isn't available, enable **pg_cron** and **pg_net** under Database → Extensions, then run the last block again.
+3. **Allow logins from the site.**
+   - Authentication → URL Configuration: set Site URL to `https://<user>.github.io/<repo>/`.
+   - Optional, for quick testing: Authentication → Providers → Email → turn off **Confirm email**.
+4. **Connect the app.** Copy the **Project URL** and the **anon public key** from Project Settings → API into `apps/web/.env.pages`. Both are safe to commit. Alternatively, set them as repository *variables* named `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+5. **Turn on GitHub Pages.** In GitHub, go to Settings → Pages → Build and deployment. Set Source to **Deploy from a branch**, Branch to **gh-pages**, folder **/ (root)**, then click **Save**.
+6. **Deploy.** Push to `main` or the working branch. The site appears at `https://<user>.github.io/<repo>/`.
+
+Tests for the SQL itself run with `pnpm --filter @karsathi/supabase-tests test`. They run the real schema on PGlite (Postgres compiled to WASM) and check RLS isolation, staff scoping, the upload flow, the dispatcher and quiet hours.
+
+Limits compared with the Express API:
+- File types are checked by their first bytes in the browser, but Storage only enforces the declared type and size.
+- Tasks for new periods are created when someone in the firm opens the app. Missed-marking and reminders run in the database without anyone logged in.
+- Zip download and firm logo upload are not built yet.
+
+## Deploy (Express API version)
 
 Recommended setup: the web app on **Vercel**, with `/api/*` rewritten to the API. This makes the app and API the same origin, so the session cookie stays first-party (`SameSite=Lax`).
 
