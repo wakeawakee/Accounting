@@ -1,6 +1,6 @@
 /** Generates samples/clients-50.xlsx — a realistic import file for testing onboarding. */
 import ExcelJS from 'exceljs';
-import { fakeClients } from './fakeData';
+import { fakeClients } from '@karsathi/shared';
 
 const wb = new ExcelJS.Workbook();
 const ws = wb.addWorksheet('Clients');

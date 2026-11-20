@@ -6,3 +6,4 @@ export * from './reminders';
 export * from './sms';
 export * from './templates';
 export * from './schemas';
+export * from './demoData';

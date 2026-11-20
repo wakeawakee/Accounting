@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { DEMO } from '../lib/demo';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
@@ -20,18 +21,20 @@ export function TaskActions({ task }: { task: any }) {
   const { t } = useTranslation();
   const invalidate = useInvalidateTasks();
   const [msg, setMsg] = useState('');
+  const navigate = useNavigate();
   const setStatus = useMutation({
     mutationFn: (status: string) => api(`/tasks/${task._id}`, { method: 'PATCH', body: { status } }),
     onSuccess: invalidate,
   });
   const flash = (m: string) => (setMsg(m), setTimeout(() => setMsg(''), 2500));
   async function copyLink() {
-    const { url } = await api(`/tasks/${task._id}/upload-link`, { method: 'POST' });
+    const { url, token } = await api(`/tasks/${task._id}/upload-link`, { method: 'POST' });
+    if (DEMO) return navigate(`/u/${token}`);
     try {
       await navigator.clipboard.writeText(url);
       flash(t('tasks.linkCopied'));
     } catch {
-      window.prompt(t('tasks.uploadLink'), url);
+      flash(url);
     }
   }
   const remind = useMutation({ mutationFn: () => api(`/tasks/${task._id}/remind-now`, { method: 'POST' }), onSuccess: () => (flash(t('tasks.sent')), invalidate()), onError: (e) => flash((e as Error).message) });

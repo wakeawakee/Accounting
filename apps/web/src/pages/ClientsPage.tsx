@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { CLIENT_IMPORT_FIELDS } from '@karsathi/shared';
 import { api } from '../lib/api';
+import { DEMO } from '../lib/demo';
 import { ErrorText, Modal, PageTitle } from '../components/ui';
 
 const EMPTY = { businessName: '', ownerName: '', phone: '', pan: '', vatRegistered: false, deductsTds: false, municipality: '', preferredLanguage: 'ne', assignedStaffId: '' };
@@ -107,6 +108,11 @@ function ImportWizard({ onDone }: { onDone: () => void }) {
       <section>
         <h3 className="mb-2 font-medium">{t('import.step1')}</h3>
         <input type="file" accept=".xlsx,.csv" onChange={(e) => e.target.files?.[0] && parse.mutate(e.target.files[0])} />
+        {DEMO && (
+          <button type="button" className="btn-secondary ml-2" onClick={async () => { const m = await import('../demo/backend'); const d = m.sampleImportRows(); setParsed(d); setMapping(d.suggestedMapping as Record<string, string>); setResult(null); }}>
+            Use sample file (50 clients)
+          </button>
+        )}
         <p className="mt-1 text-xs text-slate-500">{t('import.tip')}</p>
         <ErrorText error={parse.error} />
         {parsed && <p className="mt-1 text-sm">{t('import.rows', { n: parsed.rows.length })}</p>}

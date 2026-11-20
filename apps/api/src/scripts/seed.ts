@@ -8,7 +8,7 @@ import mongoose from 'mongoose';
 import { env } from '../config/env';
 import { AuditLog, Client, ComplianceTask, DocumentUpload, Firm, MessageLog, Notification, Reminder, UploadLink, User } from '../models';
 import { ensureTasksForFirm } from '../services/tasks';
-import { fakeClients } from './fakeData';
+import { fakeClients } from '@karsathi/shared';
 
 const EMAIL = 'demo@karsathi.test';
 

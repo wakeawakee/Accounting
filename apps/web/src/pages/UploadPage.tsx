@@ -3,7 +3,8 @@
  * Kept deliberately tiny: no i18next, no react-query, no zod — loads fast on 3G.
  */
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import { DEMO } from '../lib/demo';
 import { BS_MONTHS_EN, BS_MONTHS_NE, toNepaliDigits } from '@karsathi/shared/bsDate';
 
 type Lang = 'ne' | 'en';
@@ -92,6 +93,13 @@ async function compressImage(file: File): Promise<Blob> {
 }
 
 function uploadWithProgress(url: string, form: FormData, onProgress: (p: number) => void): Promise<void> {
+  if (DEMO) {
+    onProgress(0.5);
+    return fetch(url, { method: 'POST', body: form, headers: { 'X-Requested-With': 'karsathi' } }).then(async (r) => {
+      if (!r.ok) throw new Error((await r.json()).error);
+      onProgress(1);
+    });
+  }
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url);
@@ -198,6 +206,12 @@ export default function UploadPage() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md bg-white px-4 pb-10">
+      {DEMO && (
+        <div className="-mx-4 bg-amber-100 px-4 py-2 text-xs text-amber-900">
+          Demo: this is the page your client sees after tapping the SMS link.{' '}
+          <Link to="/" className="font-semibold underline">Back to accountant dashboard</Link>
+        </div>
+      )}
       <header className="flex items-center justify-between border-b py-3">
         <div className="flex items-center gap-2">
           {info.firm.hasLogo && <img src={`${base}/logo`} alt="" className="h-9 w-9 rounded object-contain" />}

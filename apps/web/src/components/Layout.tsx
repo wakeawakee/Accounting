@@ -7,6 +7,7 @@ import { api } from '../lib/api';
 import type { Me } from '../lib/auth';
 import { bsDateTime, bsLong, type Lang } from '../lib/format';
 import { setLanguage } from '../i18n';
+import { DEMO } from '../lib/demo';
 
 export default function Layout({ me, children }: { me: Me; children: ReactNode }) {
   const { t, i18n } = useTranslation();
@@ -96,6 +97,12 @@ export default function Layout({ me, children }: { me: Me; children: ReactNode }
           </div>
         </div>
       </header>
+      {DEMO && (
+        <div className="bg-amber-100 px-4 py-2 text-center text-xs text-amber-900">
+          Demo with sample data. Everything stays on this device. Try: Tasks → 🔗 Upload link to see the client's phone page.{' '}
+          <button className="font-semibold underline" onClick={async () => { const m = await import('../demo/backend'); m.resetDemo(); qc.clear(); nav('/'); }}>Reset demo</button>
+        </div>
+      )}
       <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
     </div>
   );

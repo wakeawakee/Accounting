@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, apiBase } from '../lib/api';
+import { DEMO } from '../lib/demo';
 import { bsDateTime, type Lang } from '../lib/format';
 import { DateBs, Modal, PageTitle, StatusBadge, Urgency } from '../components/ui';
 import { ClientForm } from './ClientsPage';
@@ -73,7 +74,7 @@ export default function ClientDetailPage() {
                   <td className="td">{lang === 'ne' ? task.periodLabelNe || task.periodLabel : task.periodLabel}</td>
                   <td className="td"><DateBs bs={task.dueDateBs} ad={task.dueDateAd} /><div><Urgency dueAd={task.dueDateAd} status={task.status} /></div></td>
                   <td className="td"><StatusBadge status={task.status} /></td>
-                  <td className="td">{docsByTask.get(task._id)?.length ? <a className="text-brand-700 underline" href={`${apiBase}/api/clients/${id}/documents.zip?taskId=${task._id}`}>{docsByTask.get(task._id)!.length} ⬇</a> : '—'}</td>
+                  <td className="td">{docsByTask.get(task._id)?.length ? (DEMO ? <span>{docsByTask.get(task._id)!.length}</span> : <a className="text-brand-700 underline" href={`${apiBase}/api/clients/${id}/documents.zip?taskId=${task._id}`}>{docsByTask.get(task._id)!.length} ⬇</a>) : '—'}</td>
                   <td className="td"><TaskActions task={task} /></td>
                 </tr>
               ))}
@@ -85,7 +86,7 @@ export default function ClientDetailPage() {
       <section>
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{t('clients.documents')} ({documents.length})</h2>
-          {documents.length > 0 && <a className="btn-secondary" href={`${apiBase}/api/clients/${id}/documents.zip`}>⬇ {t('clients.downloadAll')}</a>}
+          {documents.length > 0 && !DEMO && <a className="btn-secondary" href={`${apiBase}/api/clients/${id}/documents.zip`}>⬇ {t('clients.downloadAll')}</a>}
         </div>
         {documents.length === 0 ? <p className="text-sm text-slate-500">{t('clients.noDocs')}</p> : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
@@ -117,7 +118,7 @@ export default function ClientDetailPage() {
           {preview.mime === 'application/pdf'
             ? <iframe src={preview.url} className="h-[75vh] w-full" title="pdf" />
             : <img src={preview.url} alt="" className="mx-auto max-h-[75vh]" />}
-          <a href={preview.url} target="_blank" rel="noreferrer" className="btn-secondary mt-3">{t('common.download')}</a>
+          {!DEMO && <a href={preview.url} target="_blank" rel="noreferrer" className="btn-secondary mt-3">{t('common.download')}</a>}
         </Modal>
       )}
     </div>

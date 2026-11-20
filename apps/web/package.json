@@ -8,7 +8,8 @@
     "build": "tsc -p . && vite build",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
-    "typecheck": "tsc -p ."
+    "typecheck": "tsc -p .",
+    "build:demo": "tsc -p . && vite build --mode demo --base ./ --outDir dist-demo"
   },
   "dependencies": {
     "@karsathi/shared": "workspace:*",
