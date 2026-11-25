@@ -7,6 +7,10 @@ const en = {
   auth: {
     login: 'Log in', signup: 'Create firm account', email: 'Email', password: 'Password', name: 'Your name', firmName: 'Firm name',
     noAccount: 'New firm? Create an account', haveAccount: 'Already have an account? Log in', passwordHint: 'At least 8 characters',
+    pitch: "Every client's bills, in before the deadline.",
+    point1: 'Knows VAT, TDS and income tax dates on the Nepali calendar',
+    point2: 'Texts each client a personal upload link',
+    point3: "Shows who has sent documents and who hasn't",
   },
   status: { pending: 'Docs pending', docs_received: 'Docs received', filed: 'Filed', missed: 'Missed' },
   today: {
@@ -66,6 +70,10 @@ const ne: Dict = {
   auth: {
     login: 'लगइन', signup: 'फर्म खाता बनाउनुहोस्', email: 'इमेल', password: 'पासवर्ड', name: 'तपाईंको नाम', firmName: 'फर्मको नाम',
     noAccount: 'नयाँ फर्म? खाता बनाउनुहोस्', haveAccount: 'खाता छ? लगइन गर्नुहोस्', passwordHint: 'कम्तीमा ८ अक्षर',
+    pitch: 'हरेक ग्राहकका बिल, म्याद अघि नै।',
+    point1: 'नेपाली पात्रोमा भ्याट, टीडीएस र आयकरका मिति',
+    point2: 'हरेक ग्राहकलाई आफ्नै अपलोड लिङ्क SMS मा',
+    point3: 'कसले कागजात पठायो, कसले पठाएन, एकै ठाउँमा',
   },
   status: { pending: 'कागजात बाँकी', docs_received: 'कागजात प्राप्त', filed: 'दाखिला भयो', missed: 'छुट्यो' },
   today: {
