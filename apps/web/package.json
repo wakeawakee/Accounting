@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@karsathi/shared": "workspace:*",
+    "@sentry/react": "^11.18.0",
     "@supabase/supabase-js": "2.119.2",
     "@tanstack/react-query": "^5.62.0",
     "i18next": "^24.0.0",

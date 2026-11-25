@@ -2,7 +2,7 @@
 # Nightly Supabase database backup: pg_dump (in a throwaway Docker container) → gzip → /mnt/storage, keep 14.
 # Setup once: put the Session pooler URI (Supabase → Connect → Session pooler) in ~/.config/karsathi/backup.env:
 #   DATABASE_URL=postgresql://postgres.<ref>:<password>@<host>:5432/postgres
-#   OFFSITE=remote:karsathi-backups   # optional: an rclone remote (Backblaze B2, R2, Google Drive...) for the off-site copy
+#   OFFSITE=r2:karsathi-backups       # optional off-site copy: an rclone remote (Cloudflare R2, Backblaze B2, S3) set up with `docker run -it --rm -v ~/.config/rclone:/config/rclone rclone/rclone:1.68 config`
 # Cron (03:15 daily):  15 3 * * * /mnt/storage/home/homelab/projects/karsathi/Accounting/ops/backup-db.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -24,5 +24,8 @@ gzip -t "$OUT.tmp" && [ "$(zcat "$OUT.tmp" | grep -c 'CREATE TABLE')" -gt 10 ] |
 mv "$OUT.tmp" "$OUT"; chmod 600 "$OUT"
 
 ls -1t "$DIR"/karsathi-*.sql.gz | tail -n +15 | xargs -r rm --          # keep the newest 14
-if [ -n "${OFFSITE:-}" ]; then rclone copy "$OUT" "$OFFSITE" || fail "off-site copy to $OFFSITE failed"; fi
+if [ -n "${OFFSITE:-}" ]; then   # rclone in a container; remotes come from ~/.config/rclone/rclone.conf
+  docker run --rm -v "$HOME/.config/rclone:/config/rclone:ro" -v "$DIR:/data:ro" rclone/rclone:1.68 \
+    copy "/data/$(basename "$OUT")" "$OFFSITE" || fail "off-site copy to $OFFSITE failed"
+fi
 echo "Backup OK: $OUT ($(du -h "$OUT" | cut -f1))"

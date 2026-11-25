@@ -40,6 +40,10 @@ function start() {
   );
 }
 
+// Error tracking only when a DSN is configured; loaded as its own chunk so it costs nothing otherwise.
+const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
+if (SENTRY_DSN) void import('@sentry/react').then((S) => S.init({ dsn: SENTRY_DSN, environment: import.meta.env.VITE_SENTRY_ENV || 'production' }));
+
 if (DEMO) void import('./demo/backend').then((m) => (m.installDemoBackend(), start()));
 else if (SUPABASE) void import('./supabase/backend').then((m) => (m.installSupabaseBackend(), start()));
 else start();
