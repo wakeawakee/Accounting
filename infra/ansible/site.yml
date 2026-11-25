@@ -1,0 +1,151 @@
+# The KarSathi homelab, as code. Idempotent: re-run any time, it only changes what differs.
+#   App, stack, cron (no sudo):   ansible-playbook -i infra/ansible/inventory.ini infra/ansible/site.yml --tags app
+#   OS hardening (asks sudo pw):  ansible-playbook -i infra/ansible/inventory.ini infra/ansible/site.yml --tags system -K
+#   Rebuild a dead server:        same two commands on a fresh Ubuntu box with Docker + Tailscale installed.
+- name: KarSathi homelab
+  hosts: homelab
+  vars:
+    repo: git@github-karsathi:wakeawakee/Accounting.git   # alias in ~/.ssh/config → repo-scoped deploy key
+    deploy_dir: /mnt/storage/srv/karsathi                 # automation's own checkout, on the big disk
+    source_env: "{{ playbook_dir }}/../../apps/web/.env"  # build config; stays out of git
+    home: "{{ lookup('env', 'HOME') }}"
+
+  tasks:
+    # ------------------------------------------------------------------ system (sudo)
+    - name: Packages for patching and firewall
+      become: true
+      tags: system
+      ansible.builtin.apt:
+        name: [unattended-upgrades, ufw]
+        state: present
+
+    - name: Security updates install automatically
+      become: true
+      tags: system
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+        mode: "0644"
+
+    - name: Refuse to disable SSH passwords until a key login exists
+      tags: system
+      ansible.builtin.stat:
+        path: "{{ home }}/.ssh/authorized_keys"
+      register: authorized_keys
+    - name: Check authorized_keys
+      tags: system
+      ansible.builtin.assert:
+        that: authorized_keys.stat.exists and authorized_keys.stat.size > 0
+        fail_msg: "No SSH key in ~/.ssh/authorized_keys. Run ssh-copy-id from your Mac first, or you would be locked out."
+
+    - name: SSH keys only, no root login
+      become: true
+      tags: system
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/10-hardening.conf
+        mode: "0644"
+        content: |
+          # Managed by infra/ansible/site.yml
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PermitRootLogin no
+          PubkeyAuthentication yes
+          MaxAuthTries 3
+          X11Forwarding no
+      notify: Reload ssh
+
+    - name: Firewall allows SSH, staging (HTTP + HTTPS) on Tailscale only
+      become: true
+      tags: system
+      community.general.ufw:
+        rule: allow
+        direction: in
+        interface: tailscale0
+        port: "{{ item.port }}"
+        proto: tcp
+        comment: "{{ item.why }}"
+      loop:
+        - { port: "22", why: "SSH via Tailscale" }
+        - { port: "4000", why: "KarSathi staging (Caddy) via Tailscale" }
+        - { port: "443", why: "KarSathi staging HTTPS via Tailscale" }
+
+    - name: Tailscale direct connections
+      become: true
+      tags: system
+      community.general.ufw:
+        rule: allow
+        port: "41641"
+        proto: udp
+        comment: Tailscale
+
+    - name: Firewall on, deny all other inbound
+      become: true
+      tags: system
+      community.general.ufw:
+        state: enabled
+        direction: incoming
+        policy: deny
+        logging: "low"
+
+    - name: Docker starts at boot
+      become: true
+      tags: system
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+
+    # ------------------------------------------------------------------ app (no sudo)
+    - name: Deploy checkout tracks main
+      tags: app
+      ansible.builtin.git:
+        repo: "{{ repo }}"
+        dest: "{{ deploy_dir }}"
+        version: main
+        update: false          # day-to-day updates are auto-deploy.sh's job
+        accept_newhostkey: true
+
+    - name: Build config (Supabase URL + public key) next to the app
+      tags: app
+      ansible.builtin.copy:
+        src: "{{ source_env }}"
+        dest: "{{ deploy_dir }}/apps/web/.env"
+        mode: "0600"
+
+    - name: Secret and state folders exist, private
+      tags: app
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0700"
+      loop:
+        - "{{ home }}/.config/karsathi"
+        - "{{ home }}/.local/state"
+        - /mnt/storage/backups/karsathi
+
+    - name: Staging stack is up (Caddy + app)
+      tags: app
+      ansible.builtin.command:
+        cmd: ./deploy.sh
+        chdir: "{{ deploy_dir }}"
+      register: deploy
+      changed_when: "'Started' in deploy.stdout or 'Recreated' in deploy.stderr"
+
+    - name: Scheduled jobs
+      tags: app
+      ansible.builtin.cron:
+        name: "{{ item.name }}"
+        minute: "{{ item.minute }}"
+        hour: "{{ item.hour | default('*') }}"
+        job: "{{ item.job }}"
+      loop:
+        - { name: "karsathi uptime check", minute: "*/5", job: "{{ deploy_dir }}/ops/uptime-check.sh >/dev/null 2>&1" }
+        - { name: "karsathi auto-deploy staging", minute: "*/5", job: "{{ deploy_dir }}/ops/auto-deploy.sh >>{{ home }}/.local/state/karsathi-deploy.log 2>&1" }
+        - { name: "karsathi db backup", minute: "15", hour: "3", job: "{{ deploy_dir }}/ops/backup-db.sh >>{{ home }}/.local/state/karsathi-backup.log 2>&1" }
+
+  handlers:
+    - name: Reload ssh
+      become: true
+      ansible.builtin.shell: sshd -t && systemctl reload ssh

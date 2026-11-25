@@ -1,0 +1,55 @@
+# Homelab STAGING stack (production is Vercel). Caddy is the only thing on the host network;
+# the app container is reachable from this machine only.
+#   docker compose --env-file apps/web/.env -f infra/homelab/compose.yaml up -d --build   (run from the repo root)
+name: karsathi
+
+x-hardening: &hardening
+  restart: unless-stopped                 # back after crashes and reboots
+  read_only: true                         # container filesystem can't be modified
+  security_opt: ["no-new-privileges:true"]
+  logging:                                # rotate logs: the system disk is nearly full
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  caddy:
+    <<: *hardening
+    image: caddy:2.10-alpine
+    container_name: karsathi-caddy
+    # Host networking on purpose: ports published with `ports:` bypass ufw (Docker writes its own
+    # iptables rules). Caddy listens on real host ports, so the firewall rules apply to it.
+    network_mode: host
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:4000}  # add "homelab.taile19d6f.ts.net, :4000" once Tailscale HTTPS is on
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data                    # certificates
+      - caddy_config:/config
+      - /var/run/tailscale/tailscaled.sock:/var/run/tailscale/tailscaled.sock  # lets Caddy fetch *.ts.net certs
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]             # only to bind 443 when HTTPS is enabled
+    mem_limit: 128m
+    depends_on:
+      web: { condition: service_healthy }
+
+  web:
+    <<: *hardening
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?set it in apps/web/.env}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:?set it in apps/web/.env}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_SENTRY_ENV: staging
+    image: karsathi-web:${GIT_SHA:-local}   # one tag per commit, so rollback = run an older tag
+    container_name: karsathi-web
+    ports: ["127.0.0.1:8080:4000"]          # loopback only: Caddy can reach it, the network can't
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    mem_limit: 128m
+    cpus: 0.5
+
+volumes:
+  caddy_data:
+  caddy_config:

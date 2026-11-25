@@ -1,0 +1,22 @@
+# Front door for the homelab. One site block per app; add an API later with a handle block.
+{
+	admin off                      # no runtime admin API; restart the container to reload
+	auto_https disable_redirects   # port 80 belongs to Apache; Tailscale clients use https:// directly
+}
+
+{$SITE_ADDRESS::4000} {
+	reverse_proxy 127.0.0.1:8080 {
+		health_uri /healthz          # stop sending traffic if the app container is unhealthy
+		health_interval 30s
+	}
+	header -Server
+	log {
+		output stdout                # JSON access logs, rotated by Docker
+		format json
+	}
+
+	# A future API container would be one more block:
+	# handle_path /api/* {
+	#	reverse_proxy 127.0.0.1:8081
+	# }
+}

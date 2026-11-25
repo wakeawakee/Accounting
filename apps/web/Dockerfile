@@ -22,6 +22,8 @@ COPY apps/web apps/web
 # Public, build-time config (baked into the JS). Never pass real secrets as build args.
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_SENTRY_DSN=""
+ARG VITE_SENTRY_ENV=staging
 RUN test -n "$VITE_SUPABASE_URL" && test -n "$VITE_SUPABASE_ANON_KEY" \
     || { echo "Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY build args"; exit 1; }
 
