@@ -1,0 +1,27 @@
+# Homelab STAGING for KarSathi (production is Vercel).
+# Values for ${VITE_...} come from apps/web/.env (Compose reads .env next to this file).
+#   docker compose -f apps/web/compose.yaml up -d --build
+name: karsathi
+services:
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?set it in apps/web/.env}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:?set it in apps/web/.env}
+    image: karsathi-web:${GIT_SHA:-local}   # one tag per commit, so rollback = run an older tag
+    container_name: karsathi-web
+    # Host networking on purpose: ports published with `ports:` bypass ufw (Docker writes its own
+    # iptables rules). Here nginx listens on host port 4000, so the ufw rules apply to it.
+    network_mode: host
+    restart: unless-stopped                 # comes back after crashes and reboots
+    read_only: true                         # nothing in the container can be modified...
+    tmpfs: [/tmp]                           # ...except nginx's scratch dir
+    cap_drop: [ALL]                         # no Linux privileges at all
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    cpus: 0.5
+    logging:                                # rotate logs: the disk is already 91% full
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
