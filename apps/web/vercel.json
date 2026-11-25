@@ -4,6 +4,7 @@
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
   "buildCommand": "pnpm build",
   "outputDirectory": "dist",
+  "git": { "deploymentEnabled": { "gh-pages": false } },
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://YOUR-API-HOST/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
