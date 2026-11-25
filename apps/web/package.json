@@ -12,11 +12,13 @@
     "build:demo": "tsc -p . && vite build --mode demo --base ./ --outDir dist-demo"
   },
   "dependencies": {
+    "@fontsource/mukta": "^5.3.0",
     "@karsathi/shared": "workspace:*",
     "@sentry/react": "^11.18.0",
     "@supabase/supabase-js": "2.119.2",
     "@tanstack/react-query": "^5.62.0",
     "i18next": "^24.0.0",
+    "lucide-react": "^1.80.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-i18next": "^15.1.0",

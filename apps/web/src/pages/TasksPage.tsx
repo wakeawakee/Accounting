@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { DEMO } from '../lib/demo';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Check, Link2, Send } from 'lucide-react';
 import { api } from '../lib/api';
 import type { Lang } from '../lib/format';
 import { DateBs, ErrorText, PageTitle, StatusBadge, Urgency, urgencyRowClass } from '../components/ui';
@@ -40,16 +41,16 @@ export function TaskActions({ task }: { task: any }) {
   const remind = useMutation({ mutationFn: () => api(`/tasks/${task._id}/remind-now`, { method: 'POST' }), onSuccess: () => (flash(t('tasks.sent')), invalidate()), onError: (e) => flash((e as Error).message) });
   return (
     <div className="flex flex-wrap items-center gap-1">
-      {task.status !== 'filed' && <button className="rounded bg-green-600 px-2 py-1 text-xs text-white hover:bg-green-700" onClick={() => setStatus.mutate('filed')}>{t('tasks.markFiled')}</button>}
+      {task.status !== 'filed' && <button className="btn-sm-primary" onClick={() => setStatus.mutate('filed')}><Check size={13} aria-hidden />{t('tasks.markFiled')}</button>}
       {task.status === 'pending' || task.status === 'missed' ? (
         <>
-          <button className="rounded border px-2 py-1 text-xs" onClick={() => setStatus.mutate('docs_received')}>{t('tasks.markReceived')}</button>
-          <button className="rounded border px-2 py-1 text-xs" onClick={() => remind.mutate()} disabled={remind.isPending}>📩 {t('tasks.remindNow')}</button>
+          <button className="btn-sm" onClick={() => setStatus.mutate('docs_received')}>{t('tasks.markReceived')}</button>
+          <button className="btn-sm" onClick={() => remind.mutate()} disabled={remind.isPending}><Send size={13} aria-hidden />{t('tasks.remindNow')}</button>
         </>
       ) : (
-        <button className="rounded border px-2 py-1 text-xs" onClick={() => setStatus.mutate('pending')}>{t('tasks.markPending')}</button>
+        <button className="btn-sm" onClick={() => setStatus.mutate('pending')}>{t('tasks.markPending')}</button>
       )}
-      <button className="rounded border px-2 py-1 text-xs" onClick={copyLink}>🔗 {t('tasks.uploadLink')}</button>
+      <button className="btn-sm" onClick={copyLink}><Link2 size={13} aria-hidden />{t('tasks.uploadLink')}</button>
       {msg && <span className="text-xs text-brand-600">{msg}</span>}
     </div>
   );

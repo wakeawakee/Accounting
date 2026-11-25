@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import { num, type Lang } from '../lib/format';
-import { DateBs, PageTitle, Stat, StatusBadge, Urgency, urgencyRowClass } from '../components/ui';
+import { DateBs, PageTitle, StatusBadge, Tally, Urgency, urgencyRowClass } from '../components/ui';
 import { TaskActions } from './TasksPage';
 
 export default function TodayPage() {
@@ -15,19 +15,19 @@ export default function TodayPage() {
   return (
     <div>
       <PageTitle>{t('today.title')}</PageTitle>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label={t('today.dueThisWeek')} value={num(c.dueThisWeek, lang)} tone="text-orange-700" />
-        <Stat label={t('today.docsPending')} value={num(c.docsPending, lang)} tone="text-amber-700" />
-        <Stat label={t('today.docsReceived')} value={num(c.docsReceived, lang)} tone="text-blue-700" />
-        <Stat label={t('today.missed')} value={num(c.missed, lang)} tone="text-red-700" />
-      </div>
-      <h2 className="mb-2 mt-8 text-lg font-semibold">{t('today.urgent')}</h2>
+      <Tally items={[
+        { label: t('today.dueThisWeek'), value: num(c.dueThisWeek, lang) },
+        { label: t('today.docsPending'), value: num(c.docsPending, lang) },
+        { label: t('today.docsReceived'), value: num(c.docsReceived, lang) },
+        { label: t('today.missed'), value: num(c.missed, lang), alert: c.missed > 0 },
+      ]} />
+      <h2 className="mb-3 mt-8 text-lg font-semibold">{t('today.urgent')}</h2>
       {data.tasks.length === 0 ? (
         <div className="card p-6 text-center text-slate-500">{t('today.empty')} <Link to="/clients" className="text-brand-600 underline">{t('clients.add')}</Link></div>
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full">
-            <thead className="border-b bg-slate-50"><tr>
+            <thead className="border-b border-slate-200 bg-slate-50/70"><tr>
               <th className="th">{t('fields.client')}</th><th className="th">{t('fields.rule')}</th><th className="th">{t('fields.period')}</th>
               <th className="th">{t('fields.due')}</th><th className="th">{t('fields.status')}</th><th className="th"></th>
             </tr></thead>
